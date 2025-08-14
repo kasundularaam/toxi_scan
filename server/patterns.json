@@ -1,0 +1,6 @@
+{
+  "patterns": [
+    { "label": "huth-stem", "pattern": "huth", "script": "latin" },
+    { "label": "whut-stem", "pattern": "whut", "script": "latin" }
+  ]
+}
