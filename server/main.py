@@ -1,7 +1,7 @@
 import os
 import json
 from pathlib import Path
-from typing import List, Dict, Any, Tuple, Optional
+from typing import List, Dict, Any, Tuple
 
 import regex as re
 from dotenv import load_dotenv
@@ -24,14 +24,11 @@ API_KEY = os.getenv("GEMINI_API_KEY")
 if not API_KEY:
     raise RuntimeError("GEMINI_API_KEY not set. Put it in your .env")
 
-# optional absolute/relative path
+# Optional absolute/relative path to patterns json
 PATTERNS_FILE_ENV = os.getenv("PATTERNS_FILE")
-AUTO_CREATE = os.getenv("CREATE_PATTERNS", "1") == "1"
 
 CLIENT = genai.Client(api_key=API_KEY)
-
-app = FastAPI(title="ToxiScan", version="1.1")
-
+app = FastAPI(title="ToxiScan", version="1.2")
 
 app.add_middleware(
     CORSMiddleware,
@@ -41,15 +38,34 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# =========================================================
+# Patterns: load, compile (mixed Sinhala + Latin, script ignored)
+# =========================================================
 
-# =========================================================
-# Patterns: load, compile (Sinhala + Singlish/Latin)
-# =========================================================
+
+def _require_patterns(items: Any) -> List[dict]:
+    if not isinstance(items, list) or not items:
+        raise RuntimeError(
+            "No patterns found. Ensure your JSON has a non-empty 'patterns' list."
+        )
+    # Basic validation
+    for i, p in enumerate(items):
+        if not isinstance(p, dict):
+            raise RuntimeError(
+                f"Invalid pattern at index {i}: expected object.")
+        if "label" not in p or "pattern" not in p:
+            raise RuntimeError(
+                f"Pattern at index {i} missing 'label' or 'pattern'.")
+        if not isinstance(p["label"], str) or not isinstance(p["pattern"], str):
+            raise RuntimeError(
+                f"Pattern at index {i} has non-string 'label'/'pattern'.")
+        if not p["pattern"].strip():
+            raise RuntimeError(
+                f"Pattern at index {i} has empty 'pattern' value.")
+    return items
 
 
 def load_patterns() -> List[dict]:
-    defaults = [{"label": "huth-stem", "pattern": "huth", "script": "latin"},
-                {"label": "whut-stem", "pattern": "whut", "script": "latin"}]
     candidates: List[Path] = []
     if PATTERNS_FILE_ENV:
         candidates.append(Path(PATTERNS_FILE_ENV))
@@ -60,23 +76,16 @@ def load_patterns() -> List[dict]:
         if p.exists():
             with p.open("r", encoding="utf-8") as f:
                 data = json.load(f)
-            items = data.get("patterns", [])
-            if items:
-                print(f"[patterns] loaded {len(items)} from {p}")
-                return items
-            else:
-                print(
-                    f"[patterns] {p} has no 'patterns' entries, using defaults.")
-    if AUTO_CREATE:
-        skeleton_path = Path.cwd() / "patterns.json"
-        skeleton = {"patterns": defaults}
-        skeleton_path.write_text(json.dumps(
-            skeleton, ensure_ascii=False, indent=2), encoding="utf-8")
-        print(f"[patterns] created skeleton at {skeleton_path}")
-    print("[patterns] using in-code defaults")
-    return defaults
+            items = _require_patterns(data.get("patterns"))
+            print(f"[patterns] loaded {len(items)} from {p}")
+            return items
+
+    raise RuntimeError(
+        "patterns.json not found. Set PATTERNS_FILE in .env or place patterns.json next to main.py."
+    )
 
 
+# l33t map for Latin; Sinhala handled literally (grapheme-safe)
 LEET_MAP = {
     "a": "[a@]",
     "i": "[i1!|]",
@@ -91,30 +100,41 @@ LEET_MAP = {
 NOISE = r"(?:[^\p{L}\p{N}]{0,3})"
 
 
+def is_latin_letter(ch: str) -> bool:
+    o = ord(ch)
+    return ("A" <= ch <= "Z") or ("a" <= ch <= "z") or (0x00C0 <= o <= 0x024F)
+
+
 def _latin_char_class(ch: str) -> str:
     low = ch.lower()
     return LEET_MAP.get(low, re.escape(ch))
 
 
-def build_pattern(token: str, script: str) -> re.Pattern:
+def build_pattern(token: str) -> re.Pattern:
+    """
+    Mixed-script builder:
+      - Latin letters: case-insensitive + l33t alternatives + allow repeats
+      - Digits: allow repeats
+      - Other unicode letters (e.g., Sinhala): literal + allow repeats
+    Up to 3 non-alnum separators allowed between each step (NOISE).
+    """
     parts = []
-    if script.lower() == "latin":
-        for ch in token:
-            parts.append(f"(?:{_latin_char_class(ch)})+")
-        flags = re.IGNORECASE
-    else:
-        # Sinhala/other scripts: literal graphemes, allow repeats
-        for ch in token:
+    for ch in token:
+        if is_latin_letter(ch):
+            parts.append(f"(?i:(?:{_latin_char_class(ch)})+)")
+        elif ch.isdigit():
+            parts.append(r"(?:\d+)")
+        else:
             parts.append(f"(?:{re.escape(ch)})+")
-        flags = 0
     body = NOISE.join(parts)
-    return re.compile(body, flags | re.UNICODE)
+    return re.compile(body, re.UNICODE)
 
 
 def compile_patterns(raw: List[dict]) -> List[dict]:
+    # 'script' field (if present) is ignored
     return [
         {"label": p["label"], "pattern": p["pattern"],
-            "rx": build_pattern(p["pattern"], p.get("script", "latin"))}
+            "rx": build_pattern(p["pattern"])}
         for p in raw
     ]
 
@@ -134,7 +154,7 @@ def merge_spans(spans: List[Tuple[int, int, str]]) -> List[Tuple[int, int, str]]
         if not merged:
             merged.append([s, e, lbl])
         else:
-            ls, le, llbl = merged[-1]
+            ls, le, _ = merged[-1]
             if s <= le:
                 if e > le:
                     merged[-1][1] = e
@@ -163,8 +183,12 @@ def find_matches(text: str):
         rx, label = entry["rx"], entry["label"]
         for m in rx.finditer(text):
             spans.append((m.start(), m.end(), label))
-            info.append({"label": label, "match": text[m.start(
-            ):m.end()], "start": m.start(), "end": m.end()})
+            info.append({
+                "label": label,
+                "match": text[m.start():m.end()],
+                "start": m.start(),
+                "end": m.end()
+            })
     merged = merge_spans(spans)
     return tag_text(text, merged), info
 
@@ -180,10 +204,15 @@ class OcrResult(BaseModel):
 def ocr_image_to_text(image_bytes: bytes, mime: str) -> str:
     resp = CLIENT.models.generate_content(
         model=MODEL_NAME,
-        contents=[gx.Part.from_bytes(data=image_bytes, mime_type=mime),
-                  "Extract ALL text exactly as visible. Preserve newlines. Return JSON with a single field 'text'."],
-        config={"response_mime_type": "application/json",
-                "response_schema": OcrResult, "temperature": 0},
+        contents=[
+            gx.Part.from_bytes(data=image_bytes, mime_type=mime),
+            "Extract ALL text exactly as visible. Preserve newlines. Return JSON with a single field 'text'."
+        ],
+        config={
+            "response_mime_type": "application/json",
+            "response_schema": OcrResult,
+            "temperature": 0
+        },
     )
     if getattr(resp, "parsed", None) and getattr(resp.parsed, "text", None):
         return resp.parsed.text
@@ -250,9 +279,8 @@ def get_patterns():
 def set_patterns(payload: dict = Body(...)):
     global PATTERNS_RAW, COMPILED
     items = payload.get("patterns", [])
-    if not isinstance(items, list) or not items:
-        raise HTTPException(400, "Provide non-empty 'patterns' list.")
-    PATTERNS_RAW = items
+    # Reuse the same validation
+    PATTERNS_RAW = _require_patterns(items)
     COMPILED = compile_patterns(PATTERNS_RAW)
     return {"ok": True, "count": len(PATTERNS_RAW)}
 
