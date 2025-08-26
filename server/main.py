@@ -288,3 +288,28 @@ def set_patterns(payload: dict = Body(...)):
 @app.get("/health")
 def health():
     return {"ok": True, "model": MODEL_NAME, "patterns": len(COMPILED)}
+
+
+def _env_bool(name: str, default: bool = False) -> bool:
+    v = os.getenv(name)
+    if v is None:
+        return default
+    return v.strip().lower() in ("1", "true", "yes", "on")
+
+if __name__ == "__main__":
+    # Re-read .env if you tweak it during dev (no override of already-set env)
+    load_dotenv(override=False)
+
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", "8000"))
+    reload_ = _env_bool("RELOAD", _env_bool("DEBUG", False))
+    log_level = os.getenv("LOG_LEVEL", "info")
+    workers = int(os.getenv("WORKERS", "1"))
+    if reload_:
+        # uvicorn doesn't allow reload with workers > 1
+        workers = 1
+
+    import uvicorn
+    # If this file is named "main.py", you can also pass the app object directly
+    uvicorn.run(app, host=host, port=port, reload=reload_, log_level=log_level, workers=workers)
+    # or: uvicorn.run("main:app", host=host, port=port, reload=reload_, log_level=log_level, workers=workers)
