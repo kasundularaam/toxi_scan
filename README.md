@@ -252,3 +252,27 @@ Frontend renders highlights + per-token & overall confidence
 * `/health` exposes the active threshold; replace artifacts to upgrade the model.
 
 ---
+
+## 👥 Team & Responsibilities
+
+* **21UG1056** – Data Engineering & Curation
+
+* **21UG1287** – Data Engineering & Curation
+
+* **21UG1073** – Data Engineering & Curation, Model Training, QA & Documentation
+
+* **21UG1376** – Data Engineering & Curation, Backend API & OCR, Frontend
+
+* **21UG1091** – Model Training
+
+* **21UG1092** – Model Training
+
+* **21UG1149** – Backend API & OCR
+
+* **21UG0460** – Backend API & OCR
+
+* **21UG951** – Frontend
+
+* **21UG1079** – QA & Documentation
+
+* **21UG1260** – QA & Documentation
