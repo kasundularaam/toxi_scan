@@ -89,7 +89,7 @@ def tag_text(text: str, spans: List[Tuple[int, int, str]]) -> str:
 # =========================================================
 # AI word-level model loader
 # =========================================================
-MODEL_DIR = Path(__file__).parent / "model"
+MODEL_DIR = Path(__file__).parent / "../toxi_scan_ai/models"
 MODEL_PATH = MODEL_DIR / "word_cuss_lr.joblib"
 THRESH_PATH = MODEL_DIR / "threshold.txt"
 
