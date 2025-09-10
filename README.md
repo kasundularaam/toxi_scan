@@ -1,5 +1,10 @@
 # ToxiScan – Sinhala/Singlish Profanity Detection
 
+![Tests](https://img.shields.io/github/actions/workflow/status/your_username/ToxiScan/tests.yml?branch=main)
+![License: MIT](https://img.shields.io/github/license/your_username/ToxiScan)
+![Stars](https://img.shields.io/github/stars/your_username/ToxiScan?style=social)
+![Repo Size](https://img.shields.io/github/repo-size/your_username/ToxiScan)
+
 Lightweight, production-ready profanity detection for Sinhala, English, and Singlish.
 Hybrid design: a tiny **AI word classifier** (fast, robust to obfuscations) with optional **regex rules** and **OCR** (image → text).
 
@@ -274,5 +279,6 @@ Frontend renders highlights + per-token & overall confidence
 * **21UG951** – Frontend
 
 * **21UG1079** – QA & Documentation
+
 
 * **21UG1260** – QA & Documentation
