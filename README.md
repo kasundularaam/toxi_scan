@@ -1,5 +1,13 @@
 # ToxiScan – Sinhala/Singlish Profanity Detection
 
+[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com)
+[![Next.js](https://img.shields.io/badge/Next.js-14+-black.svg)](https://nextjs.org)
+[![scikit-learn](https://img.shields.io/badge/scikit--learn-1.3+-orange.svg)](https://scikit-learn.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](#)
+[![Version](https://img.shields.io/badge/version-v1.0.0-blue.svg)](#)
+
 Lightweight, production-ready profanity detection for Sinhala, English, and Singlish.
 Hybrid design: a tiny **AI word classifier** (fast, robust to obfuscations) with optional **regex rules** and **OCR** (image → text).
 
@@ -85,7 +93,7 @@ npm install
 
 * Vectorizer: `TfidfVectorizer(analyzer="char", ngram_range=(2,5))`
 * Classifier: `LogisticRegression(max_iter=2000, class_weight="balanced")`
-* Stratified split, then **threshold search** to maximize F1 on “cuss”
+* Stratified split, then **threshold search** to maximize F1 on "cuss"
 * Exports:
 
   ```
@@ -256,25 +264,27 @@ Frontend renders highlights + per-token & overall confidence
 ## 👥 Team & Responsibilities
 
 * **21UG1056** – Data Engineering & Curation
-
 * **21UG1287** – Data Engineering & Curation
-
 * **21UG1073** – Data Engineering & Curation, Model Training, QA & Documentation
-
 * **21UG1376** – Data Engineering & Curation, Backend API & OCR, Frontend
-
 * **21UG1091** – Model Training
-
 * **21UG1092** – Model Training
-
 * **21UG1149** – Backend API & OCR
-
 * **21UG0460** – Backend API & OCR
-
 * **21UG951** – Frontend
-
 * **21UG1079** – QA & Documentation
-
-
 * **21UG1260** – QA & Documentation
 
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## ⭐ Support
+
+If you find this project helpful, please give it a star!
